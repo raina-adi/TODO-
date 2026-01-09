@@ -3,19 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo List with Alarm</title>
+    <title>Todo List</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="todo-container">
-        <h1>My Tasks ⏰</h1>
+    <div class="container">
+        <h1>My Todo List</h1>
+        
         <form id="todoForm">
-            <input type="text" id="todoText" placeholder="Enter task..." required>
-            <input type="datetime-local" id="deadline">
-            <button type="submit">Add Task</button>
+            <input type="text" id="todoInput" placeholder="Add a new task..." required>
+            <input type="date" id="todoDate">
+            <button type="submit">Add</button>
         </form>
+
         <ul id="todoList"></ul>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>

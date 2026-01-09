@@ -1,42 +1,55 @@
 const todoForm = document.getElementById('todoForm');
-const todoText = document.getElementById('todoText');
-const deadline = document.getElementById('deadline');
+const todoInput = document.getElementById('todoInput');
+const todoDate = document.getElementById('todoDate');
 const todoList = document.getElementById('todoList');
 
-async function fetchTodos() {
-    const res = await fetch('/api/todos');
-    const todos = await res.json();
+// Load todos from server
+async function loadTodos() {
+    const response = await fetch('/api/todos');
+    const todos = await response.json();
     todoList.innerHTML = '';
     todos.forEach(todo => {
-        const li = document.createElement('li');
-        const deadlineText = todo.deadline ? new Date(todo.deadline).toLocaleString() : 'No deadline';
-        li.innerHTML = `
-            <span>${todo.text} <small>(${deadlineText})</small></span>
-            <div>
-                <button onclick="deleteTodo(${todo.id})">❌</button>
-            </div>
-        `;
-        todoList.appendChild(li);
+        addTodoToUI(todo);
     });
 }
 
-todoForm.addEventListener('submit', async e => {
+// Add todo to UI
+function addTodoToUI(todo) {
+    const li = document.createElement('li');
+    const dateText = todo.date ? new Date(todo.date).toLocaleDateString() : 'No date';
+    li.innerHTML = `
+        <div>
+            <span>${todo.text}</span>
+            <small>📅 ${dateText}</small>
+        </div>
+        <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
+    `;
+    todoList.appendChild(li);
+}
+
+// Add new todo
+todoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = todoText.value;
-    const time = deadline.value || null;
-    await fetch('/api/todos', {
+    const text = todoInput.value;
+    const date = todoDate.value || null;
+    
+    const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, deadline: time })
+        body: JSON.stringify({ text, date })
     });
-    todoText.value = '';
-    deadline.value = '';
-    fetchTodos();
+    
+    const newTodo = await response.json();
+    addTodoToUI(newTodo);
+    todoInput.value = '';
+    todoDate.value = '';
 });
 
+// Delete todo
 async function deleteTodo(id) {
     await fetch(`/api/todos/${id}`, { method: 'DELETE' });
-    fetchTodos();
+    loadTodos();
 }
 
-fetchTodos();
+// Load todos on page load
+loadTodos();
