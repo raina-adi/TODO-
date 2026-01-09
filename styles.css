@@ -1,58 +1,124 @@
-body {
-    font-family: Arial, sans-serif;
+/* Reset some default styles */
+body, h1, ul, li, input, button {
     margin: 0;
-    background: url('https://source.unsplash.com/1920x1080/?nature,forest') no-repeat center center/cover;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%);
+    min-height: 100vh;
     display: flex;
-    justify-content: center;
     align-items: center;
-    height: 100vh;
+    justify-content: center;
 }
 
 .todo-container {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    padding: 20px;
-    border-radius: 15px;
-    width: 400px;
+    background: #fff;
+    padding: 2rem 2.5rem;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(44, 62, 80, 0.15);
+    width: 100%;
+    max-width: 400px;
+}
+
+h1 {
     text-align: center;
-    color: #fff;
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    color: #2d3a4b;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    letter-spacing: 1px;
 }
 
 form {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
 }
 
-input, button {
-    padding: 10px;
+input[type="text"], input[type="datetime-local"] {
+    flex: 1;
+    padding: 0.7rem;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus, input[type="datetime-local"]:focus {
+    border-color: #74ebd5;
+    outline: none;
+}
+
+button[type="submit"] {
+    background: linear-gradient(90deg, #74ebd5 0%, #ACB6E5 100%);
+    color: #fff;
     border: none;
     border-radius: 8px;
-}
-
-button {
-    background-color: #4CAF50;
-    color: white;
+    padding: 0 1.2rem;
+    font-size: 1rem;
     cursor: pointer;
+    transition: background 0.2s;
 }
 
-button:hover {
-    background-color: #45a049;
+button[type="submit"]:hover {
+    background: linear-gradient(90deg, #ACB6E5 0%, #74ebd5 100%);
 }
 
-ul {
+ul#todoList {
     list-style: none;
-    padding: 0;
-    margin-top: 15px;
+    margin-top: 1rem;
 }
 
-li {
-    background: rgba(255,255,255,0.1);
-    padding: 10px;
-    margin: 5px 0;
+ul#todoList li {
+    background: #f7fafc;
     border-radius: 8px;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.7rem;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(44, 62, 80, 0.06);
+    transition: box-shadow 0.2s;
+}
+
+ul#todoList li:hover {
+    box-shadow: 0 4px 16px rgba(44, 62, 80, 0.12);
+}
+
+ul#todoList span {
+    font-size: 1rem;
+    color: #2d3a4b;
+}
+
+ul#todoList small {
+    color: #7b8ca6;
+    font-size: 0.9em;
+}
+
+ul#todoList button {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+ul#todoList button:hover {
+    background: #fdecea;
+}
+
+@media (max-width: 500px) {
+    .todo-container {
+        padding: 1rem;
+        max-width: 95vw;
+    }
+    form {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 }
