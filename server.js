@@ -2,9 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const path = require('path');
+require('dotenv').config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
@@ -63,9 +64,19 @@ app.post('/api/todos', (req, res) => {
 // Delete todo
 app.delete('/api/todos/:id', (req, res) => {
     const { id } = req.params;
-    db.query('DELETE FROM todos WHERE id = ?', [id], (err) => {
+    db.query('DELETE FROM todos WHERE id = ?', [id], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Todo deleted' });
+        res.json({ message: 'Todo deleted', id });
+    });
+});
+
+// Update todo
+app.put('/api/todos/:id', (req, res) => {
+    const { id } = req.params;
+    const { text, date } = req.body;
+    db.query('UPDATE todos SET text = ?, date = ? WHERE id = ?', [text, date || null, id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id, text, date: date || null });
     });
 });
 

@@ -3,53 +3,232 @@ const todoInput = document.getElementById('todoInput');
 const todoDate = document.getElementById('todoDate');
 const todoList = document.getElementById('todoList');
 
-// Load todos from server
+const TODO_KEY = 'todos_v1';
+
+function getLocalTodos() {
+    try {
+        const raw = localStorage.getItem(TODO_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function formatDateWithoutYear(dateStr) {
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d)) return 'No date';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        return `${day}-${month}`;
+    } catch (e) {
+        return 'No date';
+    }
+}
+
+function saveLocalTodos(todos) {
+    localStorage.setItem(TODO_KEY, JSON.stringify(todos));
+}
+
+function generateId() {
+    return Date.now() + Math.floor(Math.random() * 1000);
+}
+
+// Load todos (try server, fall back to localStorage)
 async function loadTodos() {
-    const response = await fetch('/api/todos');
-    const todos = await response.json();
     todoList.innerHTML = '';
-    todos.forEach(todo => {
-        addTodoToUI(todo);
+    
+    // Check if we have localStorage data
+    const localTodos = getLocalTodos();
+    
+    try {
+        const response = await fetch('/api/todos');
+        if (!response.ok) throw new Error('Server returned ' + response.status);
+        const serverTodos = await response.json();
+        
+        // If server has data, use it; otherwise use localStorage
+        if (serverTodos && serverTodos.length > 0) {
+            serverTodos.forEach((todo, idx) => addTodoToUI(todo, idx));
+        } else if (localTodos.length > 0) {
+            localTodos.forEach((todo, idx) => addTodoToUI(todo, idx));
+        }
+    } catch (err) {
+        console.log('Server fetch failed, using localStorage');
+        // Use localStorage as fallback
+        if (localTodos.length > 0) {
+            localTodos.forEach((todo, idx) => addTodoToUI(todo, idx));
+        }
+    }
+}
+
+// Add todo node to UI
+function addTodoToUI(todo, index) {
+    const li = document.createElement('li');
+    li.dataset.id = todo.id;
+
+    // If index not provided, calculate it based on current list
+    if (index === undefined) {
+        index = todoList.children.length;
+    }
+
+    const serial = document.createElement('span');
+    serial.className = 'serial-num';
+    serial.textContent = index + 1;
+
+    const content = document.createElement('div');
+    const span = document.createElement('span');
+    span.textContent = todo.text;
+    const small = document.createElement('small');
+    small.textContent = '📅 ' + (todo.date ? formatDateWithoutYear(todo.date) : 'No date');
+    content.appendChild(span);
+    content.appendChild(document.createTextNode(' '));
+    content.appendChild(small);
+
+    const btnWrap = document.createElement('div');
+    btnWrap.className = 'btn-wrap';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => startEdit(li, span, todo));
+
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = 'Delete';
+    del.addEventListener('click', () => {
+        if (confirm('Delete this task?')) deleteTodo(todo.id);
+    });
+
+    btnWrap.appendChild(editBtn);
+    btnWrap.appendChild(del);
+
+    li.appendChild(serial);
+    li.appendChild(content);
+    li.appendChild(btnWrap);
+    todoList.appendChild(li);
+}
+
+function startEdit(li, span, todo) {
+    const currentText = todo.text;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentText;
+    input.className = 'edit-input';
+
+    // replace span with input
+    span.replaceWith(input);
+    input.focus();
+
+    function finish(save) {
+        const newText = input.value.trim();
+        if (save && newText && newText !== currentText) {
+            updateTodo(todo.id, { text: newText }).then(updated => {
+                todo.text = updated && updated.text ? updated.text : newText;
+                const newSpan = document.createElement('span');
+                newSpan.textContent = todo.text;
+                input.replaceWith(newSpan);
+            }).catch(() => {
+                // fallback UI update
+                todo.text = newText;
+                const newSpan = document.createElement('span');
+                newSpan.textContent = todo.text;
+                input.replaceWith(newSpan);
+            });
+        } else {
+            const newSpan = document.createElement('span');
+            newSpan.textContent = currentText;
+            input.replaceWith(newSpan);
+        }
+    }
+
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            finish(true);
+        } else if (e.key === 'Escape') {
+            finish(false);
+        }
     });
 }
 
-// Add todo to UI
-function addTodoToUI(todo) {
-    const li = document.createElement('li');
-    const dateText = todo.date ? new Date(todo.date).toLocaleDateString() : 'No date';
-    li.innerHTML = `
-        <div>
-            <span>${todo.text}</span>
-            <small>📅 ${dateText}</small>
-        </div>
-        <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
-    `;
-    todoList.appendChild(li);
+async function updateTodo(id, patch) {
+    // Try server
+    try {
+        const response = await fetch(`/api/todos/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch)
+        });
+        if (!response.ok) throw new Error('Server update failed');
+        const updated = await response.json();
+        return updated;
+    } catch (err) {
+        // Fallback: update localStorage
+        const todos = getLocalTodos();
+        const idx = todos.findIndex(t => String(t.id) === String(id));
+        if (idx !== -1) {
+            todos[idx] = { ...todos[idx], ...patch };
+            saveLocalTodos(todos);
+            return todos[idx];
+        }
+        throw err;
+    }
 }
 
 // Add new todo
 todoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = todoInput.value;
+    const text = todoInput.value.trim();
+    if (!text) return;
     const date = todoDate.value || null;
-    
-    const response = await fetch('/api/todos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, date })
-    });
-    
-    const newTodo = await response.json();
-    addTodoToUI(newTodo);
+
+    // Try server
+    try {
+        const response = await fetch('/api/todos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, date })
+        });
+        if (!response.ok) throw new Error('Server error');
+        const newTodo = await response.json();
+        addTodoToUI(newTodo);
+    } catch (err) {
+        // Fallback to localStorage
+        const todos = getLocalTodos();
+        const newTodo = { id: generateId(), text, date };
+        todos.push(newTodo);
+        saveLocalTodos(todos);
+        addTodoToUI(newTodo);
+    }
+
     todoInput.value = '';
     todoDate.value = '';
 });
 
 // Delete todo
 async function deleteTodo(id) {
-    await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+    console.log('Deleting task with ID:', id);
+    
+    // Remove from localStorage first (more reliable)
+    const todos = getLocalTodos().filter(t => String(t.id) !== String(id));
+    saveLocalTodos(todos);
+    console.log('Removed from localStorage. Remaining:', todos.length);
+
+    // Try server delete (async, non-blocking)
+    try {
+        const response = await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+        if (response.ok) {
+            console.log('Deleted from server');
+        } else {
+            console.log('Server delete returned:', response.status);
+        }
+    } catch (err) {
+        console.log('Server delete error:', err);
+    }
+
+    // Reload UI from localStorage (not from server)
     loadTodos();
 }
 
-// Load todos on page load
+// Initial load
 loadTodos();
