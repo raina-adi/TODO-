@@ -33,6 +33,7 @@ db.connect(err => {
             id INT AUTO_INCREMENT PRIMARY KEY,
             text VARCHAR(255) NOT NULL,
             date DATE,
+            completed BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `;
@@ -77,6 +78,19 @@ app.put('/api/todos/:id', (req, res) => {
     db.query('UPDATE todos SET text = ?, date = ? WHERE id = ?', [text, date || null, id], (err) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ id, text, date: date || null });
+    });
+});
+
+// Toggle completion status
+app.patch('/api/todos/:id/toggle', (req, res) => {
+    const { id } = req.params;
+    db.query('UPDATE todos SET completed = NOT completed WHERE id = ?', [id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        // Get updated todo
+        db.query('SELECT * FROM todos WHERE id = ?', [id], (err, results) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(results[0]);
+        });
     });
 });
 

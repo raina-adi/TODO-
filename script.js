@@ -2,6 +2,8 @@ const todoForm = document.getElementById('todoForm');
 const todoInput = document.getElementById('todoInput');
 const todoDate = document.getElementById('todoDate');
 const todoList = document.getElementById('todoList');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
 
 const TODO_KEY = 'todos_v1';
 
@@ -34,6 +36,16 @@ function generateId() {
     return Date.now() + Math.floor(Math.random() * 1000);
 }
 
+function updateProgress() {
+    const todos = getLocalTodos();
+    const completed = todos.filter(todo => todo.completed).length;
+    const total = todos.length;
+    const percentage = total > 0 ? (completed / total) * 100 : 0;
+
+    progressBar.style.setProperty('--progress', `${percentage}%`);
+    progressText.textContent = `${completed} / ${total} completed`;
+}
+
 // Load todos (try server, fall back to localStorage)
 async function loadTodos() {
     todoList.innerHTML = '';
@@ -59,17 +71,26 @@ async function loadTodos() {
             localTodos.forEach((todo, idx) => addTodoToUI(todo, idx));
         }
     }
+
+    updateProgress();
 }
 
 // Add todo node to UI
 function addTodoToUI(todo, index) {
     const li = document.createElement('li');
     li.dataset.id = todo.id;
+    if (todo.completed) li.classList.add('completed');
 
     // If index not provided, calculate it based on current list
     if (index === undefined) {
         index = todoList.children.length;
     }
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = todo.completed || false;
+    checkbox.className = 'complete-checkbox';
+    checkbox.addEventListener('change', () => toggleComplete(todo.id));
 
     const serial = document.createElement('span');
     serial.className = 'serial-num';
@@ -102,6 +123,7 @@ function addTodoToUI(todo, index) {
     btnWrap.appendChild(editBtn);
     btnWrap.appendChild(del);
 
+    li.appendChild(checkbox);
     li.appendChild(serial);
     li.appendChild(content);
     li.appendChild(btnWrap);
@@ -175,6 +197,48 @@ async function updateTodo(id, patch) {
     }
 }
 
+async function toggleComplete(id) {
+    // Try server
+    try {
+        const response = await fetch(`/api/todos/${id}/toggle`, {
+            method: 'PATCH'
+        });
+        if (!response.ok) throw new Error('Server toggle failed');
+        const updated = await response.json();
+        // Update localStorage
+        const todos = getLocalTodos();
+        const idx = todos.findIndex(t => String(t.id) === String(id));
+        if (idx !== -1) {
+            todos[idx] = updated;
+            saveLocalTodos(todos);
+        }
+        // Update UI
+        const li = document.querySelector(`li[data-id="${id}"]`);
+        if (li) {
+            li.classList.toggle('completed');
+            const checkbox = li.querySelector('.complete-checkbox');
+            if (checkbox) checkbox.checked = updated.completed;
+        }
+        updateProgress();
+    } catch (err) {
+        // Fallback: toggle localStorage
+        const todos = getLocalTodos();
+        const idx = todos.findIndex(t => String(t.id) === String(id));
+        if (idx !== -1) {
+            todos[idx].completed = !todos[idx].completed;
+            saveLocalTodos(todos);
+            // Update UI
+            const li = document.querySelector(`li[data-id="${id}"]`);
+            if (li) {
+                li.classList.toggle('completed');
+                const checkbox = li.querySelector('.complete-checkbox');
+                if (checkbox) checkbox.checked = todos[idx].completed;
+            }
+            updateProgress();
+        }
+    }
+}
+
 // Add new todo
 todoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -192,13 +256,15 @@ todoForm.addEventListener('submit', async (e) => {
         if (!response.ok) throw new Error('Server error');
         const newTodo = await response.json();
         addTodoToUI(newTodo);
+        updateProgress();
     } catch (err) {
         // Fallback to localStorage
         const todos = getLocalTodos();
-        const newTodo = { id: generateId(), text, date };
+        const newTodo = { id: generateId(), text, date, completed: false };
         todos.push(newTodo);
         saveLocalTodos(todos);
         addTodoToUI(newTodo);
+        updateProgress();
     }
 
     todoInput.value = '';
