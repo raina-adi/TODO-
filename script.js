@@ -298,3 +298,31 @@ async function deleteTodo(id) {
 
 // Initial load
 loadTodos();
+
+// Dark Mode Toggle
+const themeToggle = document.getElementById('themeToggle');
+const THEME_KEY = 'theme_preference';
+
+function loadTheme() {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeToggle.textContent = '☀️';
+        themeToggle.title = 'Switch to Light Mode';
+    } else {
+        themeToggle.textContent = '🌙';
+        themeToggle.title = 'Switch to Dark Mode';
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
+    themeToggle.title = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+}
+
+themeToggle.addEventListener('click', toggleTheme);
+
+// Load theme on page load
+loadTheme();
